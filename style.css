@@ -1,0 +1,156 @@
+/* 重写ol.css中的ol-mouse-position,对应位置不合适 */
+.ol-mouse-position {
+    position: absolute !important;
+    top: 92% !important;
+    left: 0.5% !important;
+    font-size: 14px !important;
+    font-weight: bold;
+}
+
+/* 页面布局相关 */
+html,
+body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-family: arial;
+    position: relative;
+}
+
+#map {
+    position: absolute;
+    left: 0%;
+    width: 100%;
+    height: 100%;
+    border-style: solid;
+    border-color: black;
+    border-width: thin;
+    z-index: 10;
+}
+
+#header {
+    position: absolute;
+    z-index: 10;
+    height: 10%;
+    width: 100%;
+}
+
+#header_info {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    align-items: center;
+}
+
+#legend {
+    position: absolute;
+    z-index: 10;
+    bottom: 7%;
+    right: 6%;
+    width: 0%;
+    height: 0%;
+    background-color: #fff;
+    font-weight: bold;
+    visibility: hidden;
+    overflow: auto;
+}
+
+#footer {
+    height: auto;
+    width: 75%;
+    margin-left: 25%;
+    position: absolute;
+    bottom: 3%;
+    z-index: 10;
+    height: 5%;
+    display: flex;
+    justify-content: flex-end;
+    /* 与上面的按钮对齐 */
+    padding-right: 6%;
+}
+
+
+#query_tab {
+    position: absolute;
+    padding: 0.5% 1%;
+    top: 0%;
+    left: 0%;
+    width: 0%;
+    height: 100%;
+    /* border: 1px solid black; */
+    border-style: solid;
+    border-color: black;
+    border-width: thin;
+    visibility: hidden;
+    overflow: auto;
+
+}
+
+#layer {
+    position: relative;
+    width: 85%;
+}
+
+#attributes {
+    position: relative;
+    width: 85%;
+}
+
+#operator {
+    position: relative;
+    width: 85%;
+}
+
+#value {
+    position: relative;
+    width: 85%;
+}
+
+#layer1 {
+    position: relative;
+    width: 85%;
+}
+
+#draw_type {
+    position: relative;
+    width: 85%;
+}
+
+
+
+#table_data {
+    position: absolute;
+    bottom: 0%;
+    overflow: scroll;
+    left: 0%;
+    right: 0%;
+    height: 0%;
+    border: 1px solid #4CAF50;
+}
+
+#table th {
+    position: sticky;
+    top: 0px;
+    background-color: rgb(122, 209, 100);
+}
+
+#table_wms_layers {
+    /* 元素内的文本不会换行 */
+    white-space: nowrap;
+    /* display: grid; */
+    /* grid-template-areas: "head-fixed" "body-scrollable"; */
+}
+
+#table_wms_layers th {
+    /* position: -webkit-sticky; */
+    /* for Safari */
+    position: sticky;
+    top: 0px;
+    background-color: rgb(122, 209, 100);
+}
+
+.modal-dialog {
+    max-width: 60% !important;
+    height: 60% !important;
+    top: 18% !important;
+}
