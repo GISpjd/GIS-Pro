@@ -5,7 +5,7 @@ var map;
 var layer_name, overlays; //对应wms_layers()和add_layer()
 var view, popup, content; //重点是对应getInfo()部分
 var selectedFeature, geojson; //对应与query()有关的部分
-
+var measuretype
 
 
 view = new ol.View({
@@ -775,4 +775,231 @@ function legend() {
 
 //初始化头部
 legend()
+
+
+measuretype = document.getElementById('measuretype')
+measuretype.onchange = function () {
+    let info_btn = document.getElementById("info_btn")
+    map.un('singleclick', getInfo)
+    info_btn.innerHTML = "☰ Activate GetInfo"
+    info_btn.setAttribute('class', 'btn btn-success btn-sm')
+    if (popup) {
+        popup.hide();
+    }
+    map.removeInteraction(draw);
+    addInteraction();
+}
+
+//设置draw结束之后线面的样式
+var source = new ol.source.Vector()
+var vectorLayer = new ol.layer.Vector({
+    source,
+    style: new ol.style.Style({
+        fill: new ol.style.Fill({
+            color: 'rgba(255, 255, 255, 0.2)'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#ffcc33',
+            width: 2
+        }),
+        image: new ol.style.Circle({
+            radius: 7,
+            fill: new ol.style.Fill({
+                color: '#ffcc33'
+            })
+        })
+    })
+})
+
+map.addLayer(vectorLayer)
+
+var sketch, helpTooltipElement, helpTooltip, measureTooltipElement, measureTooltip;
+var continuePolygonMsg = 'Click to continue drawing the polygon';
+var continueLineMsg = 'Click to continue drawing the line';
+var draw;
+
+var output
+
+//测量长度
+var formatLength = function (line) {
+    let length = ol.sphere.getLength(line, {
+        projection: 'EPSG:4326'
+    })
+
+    if (length > 1000) {
+        output = `${Math.round(length / 1000)}km`
+    } else {
+        output = `${Math.round(length * 1000) / 1000}m`
+    }
+
+    return output
+
+}
+
+
+// 测量面积
+var formatArea = function (polygon) {
+    let area = ol.sphere.getArea(polygon, {
+        projection: 'EPSG:4326'
+    })
+
+    if (area > 10000) {
+        output = `${(area / 1000000).toFixed(2)}km<sup>2</sup>`
+    } else {
+        output = `${area.toFixed(2)}m<sup>2</sup>`
+    }
+
+    return output
+}
+
+
+
+function addInteraction() {
+    if (measuretype.value == 'select' || measuretype.value == 'clear') {
+        if (draw) {
+            map.removeInteraction(draw)
+        }
+        if (vectorLayer) {
+            vectorLayer.getSource().clear()
+        }
+        if (helpTooltip) {
+            map.removeOverlay(helpTooltip)
+        }
+
+        //清除所有测量结果的标记
+        if (measureTooltipElement) {
+            var elem = document.getElementsByClassName("tooltip tooltip-static");
+            for (var i = elem.length - 1; i >= 0; i--) {
+
+                elem[i].remove();
+            }
+        }
+    } else if (measuretype.value == 'length' || measuretype.value == 'area') {
+        let type
+        type = measuretype.value == 'area' ? 'Polygon' : 'LineString'
+        draw = new ol.interaction.Draw({
+            source: source,
+            type,
+            style: new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(255, 255, 255, 0.5)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: 'rgba(0, 0, 0, 0.5)',
+                    lineDash: [10, 10],
+                    width: 2
+                }),
+                image: new ol.style.Circle({
+                    radius: 5,
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(0, 0, 0, 0.7)'
+                    }),
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 255, 255, 0.5)'
+                    })
+                })
+            })
+        })
+        map.addInteraction(draw)
+        createMeasureTooltip()
+        createHelpTooltip()
+
+
+        let pointerMoveHandler = function (e) {
+            if (e.dragging) {
+                return;
+            }
+            let helpMsg = 'Click to start drawing'
+
+            if (sketch) {
+                let geom = (sketch.getGeometry())
+                if (geom instanceof ol.geom.Polygon) {
+                    helpMsg = continuePolygonMsg
+                } else if (geom instanceof ol.geom.LineString) {
+                    helpMsg = continueLineMsg
+                }
+            }
+
+            helpTooltipElement.innerHTML = helpMsg
+            helpTooltip.setPosition(e.coordinate)
+            helpTooltipElement.classList.remove('hidden')
+        }
+
+        map.on('pointermove', pointerMoveHandler)
+        map.getViewport().addEventListener('mouseout', function () {
+            helpTooltipElement.classList.add('hidden');
+        });
+
+        var listener;
+        draw.on('drawstart',
+            function (evt) {
+                // set sketch
+                sketch = evt.feature;
+
+                /** @type {module:ol/coordinate~Coordinate|undefined} */
+                var tooltipCoord = evt.coordinate;
+
+                listener = sketch.getGeometry().on('change', function (evt) {
+                    var geom = evt.target;
+                    if (geom instanceof ol.geom.Polygon) {
+
+                        output = formatArea(geom);
+                        tooltipCoord = geom.getInteriorPoint().getCoordinates();
+
+                    } else if (geom instanceof ol.geom.LineString) {
+
+                        output = formatLength(geom);
+                        tooltipCoord = geom.getLastCoordinate();
+                    }
+                    measureTooltipElement.innerHTML = output;
+                    measureTooltip.setPosition(tooltipCoord);
+                });
+            }, this);
+
+        draw.on('drawend',
+            function () {
+                measureTooltipElement.className = 'tooltip tooltip-static';
+                measureTooltip.setOffset([0, -7]);
+                // unset sketch
+                sketch = null;
+                // unset tooltip so that a new one can be created
+                measureTooltipElement = null;
+                createMeasureTooltip();
+                ol.Observable.unByKey(listener);
+            }, this);
+
+    }
+
+}
+
+
+function createHelpTooltip() {
+    if (helpTooltipElement) {
+        //删除helpTooltipElement节点
+        helpTooltipElement.parentNode.removeChild(helpTooltipElement)
+    }
+    helpTooltipElement = document.createElement('div')
+    helpTooltipElement.className = 'tooltip hidden'
+    helpTooltip = new ol.Overlay({
+        element: helpTooltipElement,
+        offset: [15, 0],
+        positioning: 'center-left'
+    })
+    map.addOverlay(helpTooltip)
+}
+
+function createMeasureTooltip() {
+    if (measureTooltipElement) {
+        measureTooltipElement.parentNode.removeChild(measureTooltipElement);
+    }
+    measureTooltipElement = document.createElement('div');
+    measureTooltipElement.className = 'tooltip tooltip-measure';
+
+    measureTooltip = new ol.Overlay({
+        element: measureTooltipElement,
+        offset: [0, -15],
+        positioning: 'bottom-center'
+    });
+    map.addOverlay(measureTooltip);
+}
 

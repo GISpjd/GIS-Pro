@@ -25,7 +25,6 @@ body {
     border-style: solid;
     border-color: black;
     border-width: thin;
-    z-index: 10;
 }
 
 #header {
@@ -45,7 +44,7 @@ body {
 #legend {
     position: absolute;
     z-index: 10;
-    bottom: 7%;
+    bottom: 8%;
     right: 6%;
     width: 0%;
     height: 0%;
@@ -153,4 +152,45 @@ body {
     max-width: 60% !important;
     height: 60% !important;
     top: 18% !important;
+}
+
+
+
+.tooltip {
+    position: relative !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    border-radius: 4px !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    opacity: 0.7 !important;
+    white-space: nowrap !important;
+}
+
+.tooltip-measure {
+    opacity: 1;
+    font-weight: bold;
+}
+
+.tooltip-static {
+    background-color: #ffcc33;
+    color: black;
+    border: 1px solid white;
+    /* z-index: 1600 !important; */
+}
+
+
+.tooltip-measure:before,
+.tooltip-static:before {
+    border-top: 6px solid rgba(0, 0, 0, 0.5);
+    border-right: 6px solid transparent;
+    border-left: 6px solid transparent;
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    margin-left: -7px;
+    left: 50%;
+}
+
+.tooltip-static:before {
+    border-top-color: #ffcc33;
 }
