@@ -1,6 +1,4 @@
-// var map, geojson, featureOverlay, overlays, style;
-// var selected, features, layer_name, layerControl;
-// var content;
+
 var map;
 var layer_name, overlays; //对应wms_layers()和add_layer()
 var view, popup, content; //重点是对应getInfo()部分
@@ -36,6 +34,15 @@ let base_maps = new ol.layer.Group({
             visible: true,
             source: new ol.source.XYZ({
                 url: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiY3VkODUiLCJhIjoiY2xrYnFncXZhMGc1cTNlbmFrNHN1N2cxeCJ9.69E3f8nMJkvqQDRhLSojVw'
+            })
+        }),
+        new ol.layer.Tile({
+            title: 'GaoDe',
+            type: 'base',
+            visible: 'true',
+            source: new ol.source.XYZ({
+                url: 'http://wprd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',
+                wrapX: false
             })
         })
     ]
@@ -266,7 +273,6 @@ function query() {
             format: new ol.format.GeoJSON()
         }),
         style: style,
-
     });
 
     geojson.getSource().on('addfeature', function () {
@@ -416,8 +422,9 @@ function highlight(evt) {
 
                 if ($(this).text() == feature.getId()) {
                     $(this).parent("tr").css("background-color", "grey");
-
                 }
+
+
             });
         });
     } else {
@@ -461,8 +468,6 @@ function addRowHandlers() {
     }
     for (i = 0; i < rows.length; i++) {
 
-
-
         rows[i].onclick = function () {
             return function () {
                 if (selectedFeature) {
@@ -489,9 +494,6 @@ function addRowHandlers() {
                 var features = geojson.getSource().getFeatures();
 
                 for (i = 0; i < features.length; i++) {
-
-
-
                     if (features[i].getId() == id) {
                         //alert(features[i].feature.id);
                         features[i].setStyle(highlightStyle);
@@ -512,6 +514,252 @@ function addRowHandlers() {
         }(rows[i]);
     }
 }
+
+var draw_type = document.querySelector('#draw_type')
+// console.log(draw_type);
+var draw1
+var source1 = new ol.source.Vector({
+    wrapX: false
+})
+var vector1 = new ol.layer.Vector({
+    source: source1
+})
+map.addLayer(vector1)
+
+
+draw_type.onchange = function () {
+    map.removeInteraction(draw1)
+    if (draw) {
+        map.removeInteraction(draw)
+        map.removeOverlay(helpTooltip)
+        map.removeOverlay(measureTooltip)
+    }
+    if (vectorLayer) {
+        vectorLayer.getSource().clear()
+    }
+    if (measureTooltipElement) {
+        var elem = document.getElementsByClassName("tooltip tooltip-static")
+        for (let i = elem.length - 1; i >= 0; i--) {
+            elem[i].remove()
+        }
+    }
+    add_draw_Interaction()
+}
+
+function add_draw_Interaction() {
+    let value = draw_type.value
+    if (value !== 'None') {
+        let geometryFunction
+        if (value === 'Square') {
+            value = 'Circle';
+            geometryFunction = new ol.interaction.Draw.createRegularPolygon(4)
+        } else if (value === 'Box') {
+            value = 'Circle';
+            geometryFunction = new ol.interaction.Draw.createBox()
+        } else if (value === 'Star') {
+            value = 'Circle';
+            geometryFunction = function (coordinates, geometry) {
+                let start = coordinates[0]
+                let end = coordinates[1]
+                let dx = start[0] - end[0]
+                let dy = start[1] - end[1]
+
+                let radius = Math.sqrt(dx * dx + dy * dy)
+                // 得到这两点形成的向量相对于水平轴（x轴）正向的角度，第一个参数是垂直分量，第二个是水平分量
+                let initialAngel = Math.atan2(dy, dx)
+
+                //存储组成星环的点
+                let newCoordinates = []
+
+                let pointsNum = 12
+                for (let i = 0; i < pointsNum; i++) {
+                    let newAngel = initialAngel + i * 2 * Math.PI / pointsNum
+                    let ratio = i % 2 === 0 ? 1 : 0.5
+                    // 极坐标转到直角坐标系下x=r*cos(?),y=r*sin(?)
+                    let offsetX = radius * ratio * Math.cos(newAngel)
+                    let offsetY = radius * ratio * Math.sin(newAngel)
+                    newCoordinates.push([start[0] + offsetX, start[1] + offsetY])
+                }
+                // 让星环闭合
+                newCoordinates.push(newCoordinates[0].slice())
+
+                if (!geometry) {
+                    geometry = new ol.geom.Polygon([newCoordinates])
+                } else {
+                    geometry.setCoordinates([newCoordinates])
+                }
+                return geometry
+            };
+        }
+        if (draw_type.value == 'select' || draw_type.value == 'clear') {
+
+            if (draw1) { map.removeInteraction(draw1); }
+            vector1.getSource().clear();
+            if (geojson) {
+                geojson.getSource().clear();
+                map.removeLayer(geojson);
+            }
+
+        } else if (draw_type.value == 'Square' || draw_type.value == 'Polygon' || draw_type.value == 'Circle' || draw_type.value == 'Star' || draw_type.value == 'Box') {
+            draw1 = new ol.interaction.Draw({
+                source: source1,
+                type: value,
+                //几何体坐标更新时调用geometryFunction函数
+                geometryFunction: geometryFunction
+            });
+
+            map.addInteraction(draw1);
+
+            draw1.on('drawstart', function (evt) {
+                if (vector1) {
+                    vector1.getSource().clear();
+                }
+                if (geojson) {
+                    geojson.getSource().clear();
+                    map.removeLayer(geojson);
+                }
+
+            });
+
+            draw1.on('drawend', function (evt) {
+                var feature = evt.feature;
+                // console.log(feature);
+
+                var coords = feature.getGeometry();
+                // console.log(coords);
+                var format = new ol.format.WKT();
+                var wkt = format.writeGeometry(coords);
+                var encodedWKT = encodeURIComponent(wkt);
+                console.log(encodedWKT);
+
+                var layer_name = document.getElementById("layer1");
+                var value_layer = layer_name.options[layer_name.selectedIndex].value;
+
+                var url = `http://localhost:8080/geoserver/wfs?request=GetFeature&version=1.0.0&typeName=${value_layer}&outputFormat=json&cql_filter=INTERSECTS(the_geom,${encodedWKT})`;
+
+
+                console.log(url);
+
+
+                style = new ol.style.Style({
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 255, 255, 0.2)'
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: '#ffcc33',
+                        width: 3
+                    }),
+
+                    image: new ol.style.Circle({
+                        radius: 7,
+                        fill: new ol.style.Fill({
+                            color: '#ffcc33'
+                        })
+                    })
+                });
+
+                geojson = new ol.layer.Vector({
+                    //title:'dfdfd',
+                    //title: '<h5>' + value_crop+' '+ value_param +' '+ value_seas+' '+value_level+'</h5>',
+                    source: new ol.source.Vector({
+                        url: url,
+                        format: new ol.format.GeoJSON()
+                    }),
+                    style: style,
+
+                });
+
+                geojson.getSource().on('addfeature', function () {
+                    //alert(geojson.getSource().getExtent());
+                    map.getView().fit(
+                        geojson.getSource().getExtent(), {
+                        duration: 1590,
+                        size: map.getSize()
+                    }
+                    );
+                });
+
+                //overlays.getLayers().push(geojson);
+                map.addLayer(geojson);
+                map.removeInteraction(draw1);
+                $.getJSON(url, function (data) {
+                    var col = [];
+                    col.push('id');
+                    for (var i = 0; i < data.features.length; i++) {
+
+                        for (var key in data.features[i].properties) {
+
+                            if (col.indexOf(key) === -1) {
+                                col.push(key);
+                            }
+                        }
+                    }
+
+
+
+                    var table = document.createElement("table");
+                    table.setAttribute("class", "table table-hover table-striped");
+                    table.setAttribute("id", "table");
+
+                    var caption = document.createElement("caption");
+                    caption.setAttribute("id", "caption");
+                    caption.style.captionSide = 'top';
+                    caption.innerHTML = value_layer + " (Number of Features : " + data.features.length + " )";
+                    table.appendChild(caption);
+
+
+
+                    // CREATE HTML TABLE HEADER ROW USING THE EXTRACTED HEADERS ABOVE.
+
+                    var tr = table.insertRow(-1); // TABLE ROW.
+
+                    for (var i = 0; i < col.length; i++) {
+                        var th = document.createElement("th"); // TABLE HEADER.
+                        th.innerHTML = col[i];
+                        tr.appendChild(th);
+                    }
+
+                    // ADD JSON DATA TO THE TABLE AS ROWS.
+                    for (var i = 0; i < data.features.length; i++) {
+
+                        tr = table.insertRow(-1);
+
+                        for (var j = 0; j < col.length; j++) {
+                            var tabCell = tr.insertCell(-1);
+                            if (j == 0) {
+                                tabCell.innerHTML = data.features[i]['id'];
+                            } else {
+                                //alert(data.features[i]['id']);
+                                tabCell.innerHTML = data.features[i].properties[col[j]];
+                                //alert(tabCell.innerHTML);
+                            }
+                        }
+                    }
+
+
+                    // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
+                    var divContainer = document.getElementById("table_data");
+                    divContainer.innerHTML = "";
+                    divContainer.appendChild(table);
+
+
+
+                    document.getElementById('map').style.height = '71%';
+                    document.getElementById('table_data').style.height = '29%';
+                    map.updateSize();
+                    addRowHandlers();
+
+                });
+                map.on('singleclick', highlight);
+
+            });
+
+
+        }
+
+    }
+}
+
 
 
 function wms_layers() {
@@ -677,7 +925,84 @@ function add_layer() {
 
 
 function clear_all() {
+    if (vector1) {
+        vector1.getSource().clear();
+        //map.removeLayer(geojson);
+    }
 
+    if (draw1) {
+        map.removeInteraction(draw1);
+    }
+    document.getElementById('map').style.height = '100%';
+    document.getElementById('table_data').style.height = '0%';
+    map.updateSize();
+    $('#table').empty();
+    $('#legend').empty();
+    if (geojson) {
+        geojson.getSource().clear();
+        map.removeLayer(geojson);
+    }
+
+    if (selectedFeature) {
+        selectedFeature.setStyle();
+        selectedFeature = undefined;
+    }
+    if (popup) {
+        popup.hide();
+    }
+    map.getView().fit([65.90, 7.48, 98.96, 40.30], {
+        duration: 1590,
+        size: map.getSize()
+    });
+
+    document.getElementById("query_panel_btn").innerHTML = "☰ Open Query Panel";
+    document.getElementById("query_panel_btn").setAttribute("class", "btn btn-success btn-sm");
+
+    document.getElementById("query_tab").style.width = "0%";
+    document.getElementById("map").style.width = "100%";
+    document.getElementById("map").style.left = "0%";
+    document.getElementById("query_tab").style.visibility = "hidden";
+    document.getElementById('table_data').style.left = '0%';
+
+    document.getElementById("legend_btn").innerHTML = "☰ Show Legend";
+    document.getElementById("legend").style.width = "0%";
+    document.getElementById("legend").style.visibility = "hidden";
+    document.getElementById('legend').style.height = '0%';
+
+    map.un('singleclick', getInfo);
+    map.un('singleclick', highlight);
+    document.getElementById("info_btn").innerHTML = "☰ Activate GetInfo";
+    document.getElementById("info_btn").setAttribute("class", "btn btn-success btn-sm");
+    map.updateSize();
+
+
+
+    overlays.getLayers().getArray().slice().forEach(layer => {
+        overlays.getLayers().remove(layer);
+        console.log('成功了');
+    });
+
+    layerSwitcher.renderPanel();
+
+    if (draw) {
+        map.removeInteraction(draw)
+    };
+    if (vectorLayer) {
+        vectorLayer.getSource().clear();
+    }
+    map.removeOverlay(helpTooltip);
+    map.removeOverlay(measureTooltip)
+
+    if (measureTooltipElement) {
+        var elem = document.getElementsByClassName("tooltip tooltip-static");
+
+        //alert(elem.length);
+        for (var i = elem.length - 1; i >= 0; i--) {
+
+            elem[i].remove();
+            //alert(elem[i].innerHTML);
+        }
+    }
 }
 
 function info() {

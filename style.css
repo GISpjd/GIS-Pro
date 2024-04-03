@@ -7,6 +7,18 @@
     font-weight: bold;
 }
 
+/* 使缩放时候的比例尺显示的更明显 */
+.ol-scale-step-text {
+    color: red !important;
+}
+
+.ol-scale-text {
+    color: red !important;
+    font-weight: bold;
+}
+
+
+
 /* 页面布局相关 */
 html,
 body {
