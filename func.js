@@ -48,6 +48,7 @@ let base_maps = new ol.layer.Group({
     ]
 })
 
+// 存放wms图层
 overlays = new ol.layer.Group({
     'title': 'Overlays',
     layers: []
@@ -57,6 +58,7 @@ popup = new Popup();
 
 let mouse_position = new ol.control.MousePosition();
 
+// 缩放滑块控件
 let slider = new ol.control.ZoomSlider();
 
 let scale_line = new ol.control.ScaleLine({
@@ -87,30 +89,29 @@ layerSwitcher = new ol.control.LayerSwitcher({
     collapseTipLabel: 'Collapse layers',
 });
 map.addControl(layerSwitcher);
+
+// 初始图层切换模块
 layerSwitcher.renderPanel();
 
 
+// 控制查询面板
 function show_hide_querypanel() {
-    // console.log(">>>");
-    if (document.getElementById("query_tab").style.visibility == "hidden") {
-        document.getElementById("query_panel_btn").innerHTML = "☰ Hide Query Panel";
-        document.getElementById("query_panel_btn").setAttribute("class", "btn btn-danger btn-sm");
-        document.getElementById("query_tab").style.visibility = "visible";
-        document.getElementById("query_tab").style.width = "25%";
-        document.getElementById("map").style.width = "75%";
-        document.getElementById("map").style.left = "25%";
-        document.getElementById('table_data').style.left = '25%';
-        map.updateSize();
-    } else {
-        document.getElementById("query_panel_btn").innerHTML = "☰ Open Query Panel";
-        document.getElementById("query_panel_btn").setAttribute("class", "btn btn-success btn-sm");
-        document.getElementById("query_tab").style.width = "0%";
-        document.getElementById("map").style.width = "100%";
-        document.getElementById("map").style.left = "0%";
-        document.getElementById("query_tab").style.visibility = "hidden";
-        document.getElementById('table_data').style.left = '0%';
-        map.updateSize();
-    }
+    const queryTab = document.getElementById("query_tab")
+    const queryPanelBtn = document.getElementById("query_panel_btn")
+    const tableData = document.getElementById('table_data')
+    const mapContainer = document.getElementById('map')
+
+    const isNotVisible = queryTab.style.visibility == "hidden"
+
+    queryTab.style.visibility = isNotVisible ? 'visible' : 'hidden'
+    queryTab.style.width = "25%"
+    queryPanelBtn.innerHTML = isNotVisible ? "☰ Hide Query Panel" : "☰ Open Query Panel"
+    queryPanelBtn.setAttribute("class", isNotVisible ? "btn btn-danger btn-sm" : "btn btn-success btn-sm")
+    tableData.style.left = isNotVisible ? '25%' : '0%'
+
+    mapContainer.style.left = isNotVisible ? '25%' : '0%'
+    mapContainer.style.width = isNotVisible ? '75%' : '100%'
+    map.updateSize()
 }
 
 //填充query_tab中的layer下拉列表
@@ -151,7 +152,7 @@ $(function () {
         attributes.innerHTML = ''
 
         let selectedLayer = $(this).val()
-        console.log(selectedLayer);
+        // console.log(selectedLayer);
         attributes.options[0] = new Option('Select attributes', "")
 
         $.ajax({
@@ -182,7 +183,7 @@ $(function () {
         operator.innerHTML = ''
 
         let selectedAttribute = $(this).val()
-        console.log(selectedAttribute);
+        // console.log(selectedAttribute);
         operator.options[0] = new Option('Select operator', "")
 
         if (selectedAttribute == 'xsd:short' || selectedAttribute == 'xsd:int' || selectedAttribute == 'xsd:double' || selectedAttribute == 'xsd:long') {
@@ -204,6 +205,7 @@ var highlightStyle = new ol.style.Style({
         color: 'rgba(255,0,0,0.3)',
     }),
     stroke: new ol.style.Stroke({
+        // 比较接近蓝色
         color: '#3399CC',
         width: 3,
     }),
@@ -214,6 +216,7 @@ var highlightStyle = new ol.style.Style({
         })
     })
 });
+
 function query() {
     $('#table').empty();
     if (geojson) {
@@ -223,60 +226,56 @@ function query() {
         selectedFeature.setStyle();
         selectedFeature = undefined;
     }
-    // if (vector1) {
-    //     vector1.getSource().clear();
-    // }
+    if (vector1) {
+        vector1.getSource().clear();
+    }
 
-    var layer = document.getElementById("layer");
-    var value_layer = layer.options[layer.selectedIndex].value;
-    console.log(value_layer);
-    //alert(value_layer);
+    const layer = document.getElementById("layer");
+    let layerValue = layer.options[layer.selectedIndex].value;
 
-    var attribute = document.getElementById("attributes");
-    var value_attribute = attribute.options[attribute.selectedIndex].text;
-    //alert(value_attribute);
+    const attribute = document.getElementById("attributes");
+    let attributeValue = attribute.options[attribute.selectedIndex].text;
 
-    var operator = document.getElementById("operator");
-    var value_operator = operator.options[operator.selectedIndex].value;
-    //alert(value_operator);
-
-    var txt = document.getElementById("value");
-
-    var value_txt = value_operator == 'ILike' ? `${txt.value}%25` : txt.value
+    const operator = document.getElementById("operator");
+    let operatorValue = operator.options[operator.selectedIndex].value;
+    // console.log(operatorValue); // > < =
 
 
+    const txt = document.getElementById("value");
 
-    var url = "http://localhost:8080/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" + value_layer + "&CQL_FILTER=" + value_attribute + "%20" + value_operator + "%20" + value_txt + "&outputFormat=application/json"
-    //console.log(url);
+    let txtValue = operatorValue == 'ILike' ? `${txt.value}%25` : txt.value
 
-    style = new ol.style.Style({
-        fill: new ol.style.Fill({
-            color: 'rgba(255, 255, 255, 0.2)'
-        }),
-        stroke: new ol.style.Stroke({
-            color: '#FF0000',
-            width: 3
-        }),
 
-        image: new ol.style.Circle({
-            radius: 7,
-            fill: new ol.style.Fill({
-                color: '#FF0000'
-            })
-        })
-    });
+    var url = `http://localhost:8080/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${layerValue}&CQL_FILTER=${attributeValue} ${operatorValue} ${txtValue}&outputFormat=application/json`;
+
+    // var url = "http://localhost:8080/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" + value_layer + "&CQL_FILTER=" + value_attribute + "%20" + value_operator + "%20" + value_txt + "&outputFormat=application/json"
+
+
     geojson = new ol.layer.Vector({
-        //title:'dfdfd',
-        //title: '<h5>' + value_crop+' '+ value_param +' '+ value_seas+' '+value_level+'</h5>',
         source: new ol.source.Vector({
             url: url,
             format: new ol.format.GeoJSON()
         }),
-        style: style,
+        style: new ol.style.Style({
+            fill: new ol.style.Fill({
+                color: 'rgba(255, 255, 255, 0.2)'
+            }),
+            stroke: new ol.style.Stroke({
+                // 红色
+                color: '#FF0000',
+                width: 3
+            }),
+
+            image: new ol.style.Circle({
+                radius: 7,
+                fill: new ol.style.Fill({
+                    color: '#FF0000'
+                })
+            })
+        })
     });
 
     geojson.getSource().on('addfeature', function () {
-        //alert(geojson.getSource().getExtent());
         map.getView().fit(
             geojson.getSource().getExtent(), {
             duration: 1590,
@@ -285,22 +284,23 @@ function query() {
         );
     });
 
-    //overlays.getLayers().push(geojson);
     map.addLayer(geojson);
 
     $.getJSON(url, function (data) {
-        var col = [];
-        col.push('id');
-        for (var i = 0; i < data.features.length; i++) {
+        let colSet = new Set(['id'])
+        // console.log(colSet);
 
-            for (var key in data.features[i].properties) {
+        // console.log(data.features);
+        data.features.forEach(feature => {
+            Object.keys(feature.properties).forEach(key => colSet.add(key))
+        })
 
-                if (col.indexOf(key) === -1) {
-                    col.push(key);
-                }
-            }
-        }
+        // console.log(colSet);
 
+        let col = Array.from(colSet)
+        // console.log(col);
+
+        // 创建表格和标题
         var table = document.createElement("table");
         table.setAttribute("class", "table table-hover table-striped");
         table.setAttribute("id", "table");
@@ -308,35 +308,32 @@ function query() {
         var caption = document.createElement("caption");
         caption.setAttribute("id", "caption");
         caption.style.captionSide = 'top';
-        caption.innerHTML = value_layer + " (Number of Features : " + data.features.length + " )";
+        caption.innerHTML = layerValue + " (Number of Features : " + data.features.length + " )";
         table.appendChild(caption);
 
-        // CREATE HTML TABLE HEADER ROW USING THE EXTRACTED HEADERS ABOVE.
+        // 创建表头
+        let thead = table.createTHead();
+        let row = thead.insertRow();
+        col.forEach(header => {
+            let th = document.createElement("th");
+            th.textContent = header;
+            row.appendChild(th);
+        });
 
-        var tr = table.insertRow(-1); // TABLE ROW.
-
-        for (var i = 0; i < col.length; i++) {
-            var th = document.createElement("th"); // TABLE HEADER.
-            th.innerHTML = col[i];
-            tr.appendChild(th);
-        }
-
-        // ADD JSON DATA TO THE TABLE AS ROWS.
-        for (var i = 0; i < data.features.length; i++) {
-
-            tr = table.insertRow(-1);
-
-            for (var j = 0; j < col.length; j++) {
-                var tabCell = tr.insertCell(-1);
-                if (j == 0) {
-                    tabCell.innerHTML = data.features[i]['id'];
+        // 填充数据
+        let tbody = table.appendChild(document.createElement('tbody'));
+        data.features.forEach(feature => {
+            let row = tbody.insertRow();
+            col.forEach((colName, index) => {
+                let cell = row.insertCell();
+                if (colName === 'id') {
+                    cell.textContent = feature.id;
                 } else {
-                    //alert(data.features[i]['id']);
-                    tabCell.innerHTML = data.features[i].properties[col[j]];
-                    //alert(tabCell.innerHTML);
+                    cell.textContent = feature.properties[colName] || '';
                 }
-            }
-        }
+            });
+        });
+
 
 
         // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
@@ -423,8 +420,6 @@ function highlight(evt) {
                 if ($(this).text() == feature.getId()) {
                     $(this).parent("tr").css("background-color", "grey");
                 }
-
-
             });
         });
     } else {
@@ -780,7 +775,7 @@ function wms_layers() {
             url: "http://localhost:8080/geoserver/wms?request=getCapabilities",
             dataType: "xml",
             success: function (xml) {
-                console.log("????");
+                // console.log("????");
                 $tableWmsLayer = $("#table_wms_layers")
                 $tableWmsLayer.empty()
                 let headerHtml = `<tr><th>Name</th><th>CRS</th><th>Title</th><th>Abstract</th></tr>`

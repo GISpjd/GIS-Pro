@@ -40,6 +40,7 @@
 <body>
     <div id="map" class="map">
         <div id="header">
+            <!-- 头部采用flex布局 -->
             <div id="header_info">
                 <button onclick="show_hide_querypanel()" id="query_panel_btn" type="button"
                     class="btn btn-success btn-sm">☰ Open Query
@@ -59,6 +60,7 @@
             </div>
         </div>
 
+        <!-- 存放图例的地方 -->
         <div id="legend"></div>
 
         <div id="footer">
@@ -68,6 +70,7 @@
         </div>
     </div>
 
+    <!-- 该结构思路来自于bootstrap -->
     <div id="query_tab">
         <nav>
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
@@ -130,6 +133,7 @@
 
 
     <div class="modal fade" id="wms_layers_window" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <!-- 过长有滑动条 -->
         <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
