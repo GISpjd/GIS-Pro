@@ -200,22 +200,6 @@ $(function () {
 
 
 
-var highlightStyle = new ol.style.Style({
-    fill: new ol.style.Fill({
-        color: 'rgba(255,0,0,0.3)',
-    }),
-    stroke: new ol.style.Stroke({
-        // 比较接近蓝色
-        color: '#3399CC',
-        width: 3,
-    }),
-    image: new ol.style.Circle({
-        radius: 10,
-        fill: new ol.style.Fill({
-            color: '#3399CC'
-        })
-    })
-});
 
 function query() {
     $('#table').empty();
@@ -290,7 +274,7 @@ function query() {
         let colSet = new Set(['id'])
         // console.log(colSet);
 
-        // console.log(data.features);
+        console.log(data.features);
         data.features.forEach(feature => {
             Object.keys(feature.properties).forEach(key => colSet.add(key))
         })
@@ -321,10 +305,11 @@ function query() {
         });
 
         // 填充数据
-        let tbody = table.appendChild(document.createElement('tbody'));
+        // let tbody = table.appendChild(document.createElement('tbody'));
+        let tbody = table.createTBody()
         data.features.forEach(feature => {
             let row = tbody.insertRow();
-            col.forEach((colName, index) => {
+            col.forEach(colName => {
                 let cell = row.insertCell();
                 if (colName === 'id') {
                     cell.textContent = feature.id;
@@ -335,12 +320,9 @@ function query() {
         });
 
 
-
-        // FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
-        var divContainer = document.getElementById("table_data");
-        divContainer.innerHTML = "";
-        divContainer.appendChild(table);
-
+        const tableData = document.getElementById("table_data");
+        tableData.innerHTML = "";
+        tableData.appendChild(table);
 
 
         document.getElementById('map').style.height = '71%';
@@ -352,103 +334,111 @@ function query() {
     map.on('singleclick', highlight);
 }
 
-function highlight(evt) {
 
+
+function highlight(evt) {
+    // 重置之前选中的要素样式
     if (selectedFeature) {
-        selectedFeature.setStyle();
+        selectedFeature.setStyle(null); // 使用null来重置要素样式为默认
         selectedFeature = undefined;
     }
 
-    var feature = map.forEachFeatureAtPixel(evt.pixel,
-        function (feature, layer) {
-            return feature;
-        });
+    // 查找地图上的要素
+    var feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+        return feature;
+    });
 
-    if (feature && feature.getId() != undefined) {
+    // 高亮显示对应表格行
+    highlightTableRow(feature);
 
-
-        var geometry = feature.getGeometry();
-        var coord = geometry.getCoordinates();
-        var coordinate = evt.coordinate;
-        //alert(feature.get('gid'));
-        // alert(coordinate);
-        /*var content1 = '<h3>' + feature.get([name]) + '</h3>';
-        content1 += '<h5>' + feature.get('crop')+' '+ value_param +' '+ value_seas+' '+value_level+'</h5>'
-        content1 += '<h5>' + feature.get([value_param]) +' '+ unit +'</h5>';
-    	
-       // alert(content1);
-        content.innerHTML = content1;
-        overlay.setPosition(coordinate);*/
-
-        // console.info(feature.getProperties());
-
-        $(function () {
-            $("#table td").each(function () {
-                $(this).parent("tr").css("background-color", "white");
-            });
-        });
+    if (feature) {
         feature.setStyle(highlightStyle);
         selectedFeature = feature;
-        var table = document.getElementById('table');
-        var cells = table.getElementsByTagName('td');
-        var rows = document.getElementById("table").rows;
-        var heads = table.getElementsByTagName('th');
-        var col_no;
-        for (var i = 0; i < heads.length; i++) {
-            // Take each cell
-            var head = heads[i];
-            //alert(head.innerHTML);
-            if (head.innerHTML == 'id') {
-                col_no = i + 1;
-                //alert(col_no);
-            }
-
-        }
-        var row_no = findRowNumber(col_no, feature.getId());
-        //alert(row_no);
-
-        var rows = document.querySelectorAll('#table tr');
-
-        rows[row_no].scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-        });
-
-        $(document).ready(function () {
-            $("#table td:nth-child(" + col_no + ")").each(function () {
-
-                if ($(this).text() == feature.getId()) {
-                    $(this).parent("tr").css("background-color", "grey");
-                }
-            });
-        });
-    } else {
-        $(function () {
-            $("#table td").each(function () {
-                $(this).parent("tr").css("background-color", "white");
-            });
-        });
-
     }
-
-};
-
-function findRowNumber(cn1, v1) {
-    var table = document.querySelector('#table');
-    var rows = table.querySelectorAll("tr");
-    var msg = "No such row exist"
-    for (i = 1; i < rows.length; i++) {
-        var tableData = rows[i].querySelectorAll("td");
-        if (tableData[cn1 - 1].textContent == v1) {
-            msg = i;
-            break;
-        }
-    }
-    return msg;
 }
+
+var highlightStyle = new ol.style.Style({
+    fill: new ol.style.Fill({
+        color: 'rgba(255,0,0,0.3)',
+    }),
+    stroke: new ol.style.Stroke({
+        // 比较接近蓝色
+        color: '#3399CC',
+        width: 3,
+    }),
+    image: new ol.style.Circle({
+        radius: 10,
+        fill: new ol.style.Fill({
+            color: '#3399CC'
+        })
+    })
+});
+
+
+function highlightTableRow(feature) {
+    // 获取表格和所有行
+    var table = document.getElementById('table');
+    var rows = Array.from(table.getElementsByTagName('tr')); // 将HTMLCollection转换为数组
+
+    // console.log(rows);
+
+    // 遍历所有行，重置背景颜色
+    rows.forEach(row => {
+        row.style.backgroundColor = 'white'
+    })
+
+    if (feature && feature.getId() !== undefined) {
+        // console.log(feature.getGeometry());
+        let featureId = feature.getId();
+        let heads = Array.from(table.getElementsByTagName('th'));
+        let colIndex = heads.findIndex(head => head.textContent === 'id');
+
+        if (colIndex !== -1) {
+            // 遍历所有行以匹配和高亮显示对应的行
+            // 查找表格中符合特定条件的第一行,基于特定的列
+            let matchedRow = rows.find(row => {
+                let cells = Array.from(row.getElementsByTagName('td'))
+                // console.log(cells[colIndex]); //<td>JsGd.1</td>.......
+                return cells[colIndex] && cells[colIndex].textContent === featureId
+            })
+
+            if (matchedRow) {
+                // 如果找到匹配的行，更改背景颜色并滚动到视图
+                matchedRow.style.backgroundColor = 'grey';
+                matchedRow.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+        }
+    }
+}
+
+// function highlightTableRow(feature) {
+//     $("#table tr").css("background-color", "white"); // 重置所有行的背景色
+
+//     if (feature && feature.getId() != undefined) {
+//         var featureId = feature.getId();
+//         console.log(featureId);
+//         var colIndex = $("#table th").index($("#table th").filter(function () {
+//             return $(this).text() === 'id';
+//         })) + 1;
+
+//         // 查找并高亮显示匹配的行
+//         $("#table td:nth-child(" + colIndex + ")").filter(function () {
+//             return $(this).text() === featureId;
+//         }).parent("tr").css("background-color", "grey").get(0).scrollIntoView({
+//             behavior: 'smooth',
+//             block: 'center'
+//         });
+//     }
+// }
+
+
 
 function addRowHandlers() {
     var rows = document.getElementById("table").rows;
+    console.log(rows);
     var heads = table.getElementsByTagName('th');
     var col_no;
     for (var i = 0; i < heads.length; i++) {
@@ -503,8 +493,6 @@ function addRowHandlers() {
 
                     }
                 }
-
-                //alert("id:" + id);
             };
         }(rows[i]);
     }
