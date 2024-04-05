@@ -200,7 +200,7 @@ $(function () {
 
 
 
-
+// 定义查询逻辑
 function query() {
     $('#table').empty();
     if (geojsonLayer) {
@@ -259,6 +259,7 @@ function query() {
         })
     });
 
+    // 监听数据源上的 'addfeature' 事件，在新要素添加到数据源时触发
     geojsonLayer.getSource().on('addfeature', function () {
         map.getView().fit(
             geojsonLayer.getSource().getExtent(), {
@@ -270,6 +271,7 @@ function query() {
 
     map.addLayer(geojsonLayer);
 
+    // 根据数据生成表格及相应交互逻辑
     $.getJSON(url, function (data) {
         let colSet = new Set(['id'])
         // console.log(colSet);
@@ -756,73 +758,34 @@ function wms_layers() {
         })
     })
     function addSelectedColor() {
-        // 获取表格和行
-        var $table = $("#table_wms_layers");
-        var $rows = $table.find("tr");
+        // // 获取表格和行
+        // var $table = $("#table_wms_layers");
+        // var $rows = $table.find("tr");
 
-        // 为每一行添加点击事件监听器
-        $rows.on("click", function () {
-            // 首先重置所有行的背景色
-            $rows.find("td").css("background-color", "white");
-            // 然后将点击的行中对应列的背景色设置为灰色
-            $(this).find("td").css("background-color", "grey");
-            layer_name = $(this).find("td:first").text();
-            console.log(layer_name);
-        });
+        // // 为每一行添加点击事件监听器
+        // $rows.on("click", function () {
+        //     // 首先重置所有行的背景色
+        //     $rows.find("td").css("background-color", "white");
+        //     // 然后将点击的行中对应列的背景色设置为灰色
+        //     $(this).find("td").css("background-color", "grey");
+        //     layer_name = $(this).find("td:first").text();
+        //     console.log(layer_name);
+        // });
+
+        var wmsTable = document.getElementById('table_wms_layers')
+        var layerRows = Array.from(wmsTable.rows)
+        // console.log(layerRows);
+        for (let i = 0; i < layerRows.length; i++) {
+            layerRows[i].addEventListener('click', function () {
+                layerRows.forEach(r => r.style.backgroundColor = 'white')
+                this.style.backgroundColor = 'grey'
+                layer_name = this.cells[0].textContent
+                console.log(layer_name);
+            })
+        }
     }
 }
 
-
-// function wms_layers() {
-//     // 显示模态窗口
-//     const wmsLayersWindow = document.getElementById('wms_layers_window');
-//     wmsLayersWindow.style.display = 'block'; // 假设你已有方法显示和处理模态窗口
-
-//     // 发送请求获取数据
-//     axios.get('http://localhost:8080/geoserver/wms?request=getCapabilities')
-//         .then(function (response) {
-//             const parser = new DOMParser();
-//             const xml = parser.parseFromString(response.data, "text/xml");
-//             const table = document.getElementById('table_wms_layers');
-//             table.innerHTML = ''; // 清空表格
-
-//             // 添加表头
-//             const headerRow = document.createElement('tr');
-//             headerRow.innerHTML = '<th>Name</th><th>Title</th><th>Abstract</th>';
-//             table.appendChild(headerRow);
-
-//             // 填充数据
-//             const layers = xml.querySelectorAll('Layer > Layer');
-//             layers.forEach(layer => {
-//                 const name = layer.querySelector('Name').textContent;
-//                 const title = layer.querySelector('Title').textContent;
-//                 const abst = layer.querySelector('Abstract').textContent;
-
-//                 const row = document.createElement('tr');
-//                 row.innerHTML = `<td>${name}</td><td>${title}</td><td>${abst}</td>`;
-//                 table.appendChild(row);
-//             });
-
-//             addRowHandlers1();
-//         })
-//         .catch(function (error) {
-//             console.log(error);
-//         });
-
-//     // 行点击事件处理
-//     function addRowHandlers1() {
-//         const table = document.getElementById('table_wms_layers');
-//         table.addEventListener('click', function (e) {
-//             const target = e.target;
-//             if (target.tagName === 'TD') {
-//                 const rows = table.getElementsByTagName('tr');
-//                 Array.from(rows).forEach(row => row.style.backgroundColor = 'white'); // 重置背景色
-//                 const selectedRow = target.parentNode;
-//                 selectedRow.style.backgroundColor = 'grey'; // 设置选中行背景色
-//             }
-//         });
-//     }
-// }
 
 
 function close_wms_window() {
@@ -1072,6 +1035,7 @@ measuretype.onchange = function () {
     addInteraction();
 }
 
+
 //设置draw结束之后线面的样式
 var source = new ol.source.Vector()
 var vectorLayer = new ol.layer.Vector({
@@ -1081,6 +1045,7 @@ var vectorLayer = new ol.layer.Vector({
             color: 'rgba(255, 255, 255, 0.2)'
         }),
         stroke: new ol.style.Stroke({
+            // 靠近于黄色
             color: '#ffcc33',
             width: 2
         }),
@@ -1109,9 +1074,9 @@ var formatLength = function (line) {
     })
 
     if (length > 1000) {
-        output = `${Math.round(length / 1000)}km`
+        output = `${(length / 1000).toFixed(2)}km`
     } else {
-        output = `${Math.round(length * 1000) / 1000}m`
+        output = `${length.toFixed(2)}m`
     }
 
     return output
@@ -1125,7 +1090,7 @@ var formatArea = function (polygon) {
         projection: 'EPSG:4326'
     })
 
-    if (area > 10000) {
+    if (area > 1000000) {
         output = `${(area / 1000000).toFixed(2)}km<sup>2</sup>`
     } else {
         output = `${area.toFixed(2)}m<sup>2</sup>`
@@ -1157,8 +1122,7 @@ function addInteraction() {
             }
         }
     } else if (measuretype.value == 'length' || measuretype.value == 'area') {
-        let type
-        type = measuretype.value == 'area' ? 'Polygon' : 'LineString'
+        let type = measuretype.value == 'area' ? 'Polygon' : 'LineString'
         draw = new ol.interaction.Draw({
             source: source,
             type,
@@ -1213,42 +1177,46 @@ function addInteraction() {
         });
 
         var listener;
-        draw.on('drawstart',
-            function (evt) {
-                // set sketch
-                sketch = evt.feature;
+        draw.on('drawstart', function (evt) {
+            // 临时变量，捕获当前正在绘制的要素
+            sketch = evt.feature;
+            console.log(evt.target);
+            // console.log(sketch.getGeometry() instanceof ol.geom.LineString);
 
-                /** @type {module:ol/coordinate~Coordinate|undefined} */
-                var tooltipCoord = evt.coordinate;
+            /** @type {module:ol/coordinate~Coordinate|undefined} */
+            var tooltipCoord = evt.coordinate;
 
-                listener = sketch.getGeometry().on('change', function (evt) {
-                    var geom = evt.target;
-                    if (geom instanceof ol.geom.Polygon) {
+            // 监听几何对象是否发生变化，重新计算并显示长度或面积
+            listener = sketch.getGeometry().on('change', function (evt) {
+                let geom = evt.target;
+                // console.log(geom);
+                if (geom instanceof ol.geom.Polygon) {
 
-                        output = formatArea(geom);
-                        tooltipCoord = geom.getInteriorPoint().getCoordinates();
+                    output = formatArea(geom);
+                    // 获取内部点的坐标
+                    tooltipCoord = geom.getInteriorPoint().getCoordinates();
 
-                    } else if (geom instanceof ol.geom.LineString) {
+                } else if (geom instanceof ol.geom.LineString) {
 
-                        output = formatLength(geom);
-                        tooltipCoord = geom.getLastCoordinate();
-                    }
-                    measureTooltipElement.innerHTML = output;
-                    measureTooltip.setPosition(tooltipCoord);
-                });
-            }, this);
+                    output = formatLength(geom);
+                    tooltipCoord = geom.getLastCoordinate();
+                }
+                measureTooltipElement.innerHTML = output;
+                measureTooltip.setPosition(tooltipCoord);
+            });
+        });
 
-        draw.on('drawend',
-            function () {
-                measureTooltipElement.className = 'tooltip tooltip-static';
-                measureTooltip.setOffset([0, -7]);
-                // unset sketch
-                sketch = null;
-                // unset tooltip so that a new one can be created
-                measureTooltipElement = null;
-                createMeasureTooltip();
-                ol.Observable.unByKey(listener);
-            }, this);
+        draw.on('drawend', function () {
+            measureTooltipElement.className = 'tooltip tooltip-static';
+            // measureTooltip.setOffset([0, -7]);
+            // 清空临时几何变量
+            sketch = null;
+            // 清除现在的，创造新的
+            measureTooltipElement = null;
+            createMeasureTooltip();
+            //移除之前注册的几何变化监听器
+            ol.Observable.unByKey(listener);
+        });
 
     }
 
