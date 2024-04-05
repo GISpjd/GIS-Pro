@@ -2,7 +2,7 @@
 var map;
 var layer_name, overlays; //对应wms_layers()和add_layer()
 var view, popup, content; //重点是对应getInfo()部分
-var selectedFeature, geojson; //对应与query()有关的部分
+var selectedFeature, geojsonLayer; //对应与query()有关的部分
 var measuretype
 
 
@@ -203,8 +203,8 @@ $(function () {
 
 function query() {
     $('#table').empty();
-    if (geojson) {
-        map.removeLayer(geojson);
+    if (geojsonLayer) {
+        map.removeLayer(geojsonLayer);
     }
     if (selectedFeature) {
         selectedFeature.setStyle();
@@ -235,7 +235,7 @@ function query() {
     // var url = "http://localhost:8080/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" + value_layer + "&CQL_FILTER=" + value_attribute + "%20" + value_operator + "%20" + value_txt + "&outputFormat=application/json"
 
 
-    geojson = new ol.layer.Vector({
+    geojsonLayer = new ol.layer.Vector({
         source: new ol.source.Vector({
             url: url,
             format: new ol.format.GeoJSON()
@@ -259,22 +259,22 @@ function query() {
         })
     });
 
-    geojson.getSource().on('addfeature', function () {
+    geojsonLayer.getSource().on('addfeature', function () {
         map.getView().fit(
-            geojson.getSource().getExtent(), {
+            geojsonLayer.getSource().getExtent(), {
             duration: 1590,
             size: map.getSize()
         }
         );
     });
 
-    map.addLayer(geojson);
+    map.addLayer(geojsonLayer);
 
     $.getJSON(url, function (data) {
         let colSet = new Set(['id'])
         // console.log(colSet);
 
-        console.log(data.features);
+        // console.log(data.features);
         data.features.forEach(feature => {
             Object.keys(feature.properties).forEach(key => colSet.add(key))
         })
@@ -375,12 +375,16 @@ var highlightStyle = new ol.style.Style({
 });
 
 
+
+
+
 function highlightTableRow(feature) {
     // 获取表格和所有行
-    var table = document.getElementById('table');
-    var rows = Array.from(table.getElementsByTagName('tr')); // 将HTMLCollection转换为数组
-
+    var table = document.getElementById('table')
+    var rows = Array.from(table.getElementsByTagName('tr')) // 将HTMLCollection转换为数组
+    var heads = Array.from(table.getElementsByTagName('th'))
     // console.log(rows);
+
 
     // 遍历所有行，重置背景颜色
     rows.forEach(row => {
@@ -390,8 +394,7 @@ function highlightTableRow(feature) {
     if (feature && feature.getId() !== undefined) {
         // console.log(feature.getGeometry());
         let featureId = feature.getId();
-        let heads = Array.from(table.getElementsByTagName('th'));
-        let colIndex = heads.findIndex(head => head.textContent === 'id');
+        var colIndex = heads.findIndex(head => head.textContent === 'id');
 
         if (colIndex !== -1) {
             // 遍历所有行以匹配和高亮显示对应的行
@@ -435,66 +438,37 @@ function highlightTableRow(feature) {
 // }
 
 
-
+// 点击相应行，对应地图要素样式设置为高亮，对应行的底色也发生变化
 function addRowHandlers() {
-    var rows = document.getElementById("table").rows;
-    console.log(rows);
-    var heads = table.getElementsByTagName('th');
-    var col_no;
-    for (var i = 0; i < heads.length; i++) {
-        // Take each cell
-        var head = heads[i];
-        //alert(head.innerHTML);
-        if (head.innerHTML == 'id') {
-            col_no = i + 1;
-            //alert(col_no);
-        }
+    var table = document.getElementById('table')
+    var rows = Array.from(table.getElementsByTagName('tr'))
+    var heads = Array.from(table.getElementsByTagName('th'))
+    var colIndex = heads.findIndex(head => head.textContent === 'id')
 
-    }
-    for (i = 0; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
+        rows[i].addEventListener('click', function () {
+            if (selectedFeature) {
+                selectedFeature.setStyle(null)
+                selectedFeature = undefined
+            }
+            rows.forEach(row => row.style.backgroundColor = 'white')
 
-        rows[i].onclick = function () {
-            return function () {
-                if (selectedFeature) {
-                    selectedFeature.setStyle();
-                    selectedFeature = undefined;
-                }
-                $(function () {
-                    $("#table td").each(function () {
-                        $(this).parent("tr").css("background-color", "white");
-                    });
-                });
-                var cell = this.cells[col_no - 1];
-                var id = cell.innerHTML;
+            this.style.backgroundColor = 'grey'
+            const id = this.cells[colIndex].textContent
 
-
-                $(document).ready(function () {
-                    $("#table td:nth-child(" + col_no + ")").each(function () {
-                        if ($(this).text() == id) {
-                            $(this).parent("tr").css("background-color", "grey");
-                        }
-                    });
-                });
-
-                var features = geojson.getSource().getFeatures();
-
-                for (i = 0; i < features.length; i++) {
-                    if (features[i].getId() == id) {
-                        //alert(features[i].feature.id);
-                        features[i].setStyle(highlightStyle);
-                        selectedFeature = features[i];
-                        var featureExtent = features[i].getGeometry().getExtent();
-                        if (featureExtent) {
-                            map.getView().fit(featureExtent, {
-                                duration: 1590,
-                                size: map.getSize()
-                            });
-                        }
-
-                    }
-                }
-            };
-        }(rows[i]);
+            const features = geojsonLayer.getSource().getFeatures()
+            const feature = features.find(f => f.getId() === id)
+            if (feature) {
+                feature.setStyle(highlightStyle)
+                selectedFeature = feature
+                // 调整地图视图以适应选中要素的范围
+                const featureExtent = feature.getGeometry().getExtent()
+                map.getView().fit(featureExtent, {
+                    duration: 1590,
+                    size: map.getSize()
+                })
+            }
+        })
     }
 }
 
@@ -578,9 +552,9 @@ function add_draw_Interaction() {
 
             if (draw1) { map.removeInteraction(draw1); }
             vector1.getSource().clear();
-            if (geojson) {
-                geojson.getSource().clear();
-                map.removeLayer(geojson);
+            if (geojsonLayer) {
+                geojsonLayer.getSource().clear();
+                map.removeLayer(geojsonLayer);
             }
 
         } else if (draw_type.value == 'Square' || draw_type.value == 'Polygon' || draw_type.value == 'Circle' || draw_type.value == 'Star' || draw_type.value == 'Box') {
@@ -597,9 +571,9 @@ function add_draw_Interaction() {
                 if (vector1) {
                     vector1.getSource().clear();
                 }
-                if (geojson) {
-                    geojson.getSource().clear();
-                    map.removeLayer(geojson);
+                if (geojsonLayer) {
+                    geojsonLayer.getSource().clear();
+                    map.removeLayer(geojsonLayer);
                 }
 
             });
@@ -641,7 +615,7 @@ function add_draw_Interaction() {
                     })
                 });
 
-                geojson = new ol.layer.Vector({
+                geojsonLayer = new ol.layer.Vector({
                     //title:'dfdfd',
                     //title: '<h5>' + value_crop+' '+ value_param +' '+ value_seas+' '+value_level+'</h5>',
                     source: new ol.source.Vector({
@@ -652,18 +626,18 @@ function add_draw_Interaction() {
 
                 });
 
-                geojson.getSource().on('addfeature', function () {
-                    //alert(geojson.getSource().getExtent());
+                geojsonLayer.getSource().on('addfeature', function () {
+                    //alert(geojsonLayer.getSource().getExtent());
                     map.getView().fit(
-                        geojson.getSource().getExtent(), {
+                        geojsonLayer.getSource().getExtent(), {
                         duration: 1590,
                         size: map.getSize()
                     }
                     );
                 });
 
-                //overlays.getLayers().push(geojson);
-                map.addLayer(geojson);
+                //overlays.getLayers().push(geojsonLayer);
+                map.addLayer(geojsonLayer);
                 map.removeInteraction(draw1);
                 $.getJSON(url, function (data) {
                     var col = [];
@@ -910,7 +884,7 @@ function add_layer() {
 function clear_all() {
     if (vector1) {
         vector1.getSource().clear();
-        //map.removeLayer(geojson);
+        //map.removeLayer(geojsonLayer);
     }
 
     if (draw1) {
@@ -921,9 +895,9 @@ function clear_all() {
     map.updateSize();
     $('#table').empty();
     $('#legend').empty();
-    if (geojson) {
-        geojson.getSource().clear();
-        map.removeLayer(geojson);
+    if (geojsonLayer) {
+        geojsonLayer.getSource().clear();
+        map.removeLayer(geojsonLayer);
     }
 
     if (selectedFeature) {
