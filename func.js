@@ -776,7 +776,8 @@ function wms_layers() {
         var layerRows = Array.from(wmsTable.rows)
         // console.log(layerRows);
         for (let i = 0; i < layerRows.length; i++) {
-            layerRows[i].addEventListener('click', function () {
+            layerRows[i].addEventListener('click', function (e) {
+                // console.log(e.target.innerHTML);
                 layerRows.forEach(r => r.style.backgroundColor = 'white')
                 this.style.backgroundColor = 'grey'
                 layer_name = this.cells[0].textContent
